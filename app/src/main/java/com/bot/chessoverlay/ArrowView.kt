@@ -12,7 +12,6 @@ class ArrowView(context: Context) : View(context) {
 
     companion object {
         // Posisi papan game di layar 1080 x 2400 (diukur dari screenshot).
-        // Kalau panah bergeser, ubah angka-angka ini.
         const val BOARD_LEFT = 30f
         const val BOARD_TOP = 660f
         const val CELL = 127.5f
@@ -23,18 +22,15 @@ class ArrowView(context: Context) : View(context) {
     var fromSq = -1
     var toSq = -1
     var flipped = true
+    var show = true
 
-    private val boxPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(110, 0, 230, 90)
-        style = Paint.Style.FILL
-    }
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(220, 0, 200, 80)
+        color = Color.argb(230, 0, 200, 80)
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
     }
     private val headPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(220, 0, 200, 80)
+        color = Color.argb(230, 0, 200, 80)
         style = Paint.Style.FILL
     }
 
@@ -43,7 +39,7 @@ class ArrowView(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (fromSq < 0 || toSq < 0) return
+        if (!show || fromSq < 0 || toSq < 0) return
 
         val sx = width / REF_W
         val sy = height / REF_H
@@ -52,18 +48,10 @@ class ArrowView(context: Context) : View(context) {
         val cw = CELL * sx
         val ch = CELL * sy
 
-        val fl = left + colOf(fromSq) * cw
-        val ft = top + rowOf(fromSq) * ch
-        val tl = left + colOf(toSq) * cw
-        val tt = top + rowOf(toSq) * ch
-
-        canvas.drawRect(fl, ft, fl + cw, ft + ch, boxPaint)
-        canvas.drawRect(tl, tt, tl + cw, tt + ch, boxPaint)
-
-        val fx = fl + cw / 2
-        val fy = ft + ch / 2
-        val tx = tl + cw / 2
-        val ty = tt + ch / 2
+        val fx = left + colOf(fromSq) * cw + cw / 2
+        val fy = top + rowOf(fromSq) * ch + ch / 2
+        val tx = left + colOf(toSq) * cw + cw / 2
+        val ty = top + rowOf(toSq) * ch + ch / 2
 
         val dx = tx - fx
         val dy = ty - fy
