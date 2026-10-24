@@ -87,16 +87,65 @@ object ChessEngine {
 
     private class Pos(val b: IntArray, val side: Int, val castle: Int, val ep: Int)
 
+    // ---------- API publik ----------
+
     fun bestMove(fen: String, depth: Int = 3): String {
         val pos = parse(fen)
-        if (kingSq(pos.b, 1) < 0 || kingSq(pos.b, -1) < 0) {
-            throw IllegalArgumentException("Raja tidak ada")
-        }
-        val moves = legal(pos)
-        if (moves.isEmpty()) {
+        checkKings(pos)
+        val r = searchRoot(pos, depth)
+        if (r == null) {
             return if (inCheck(pos)) "Skakmat, tidak ada langkah"
             else "Remis (stalemate), tidak ada langkah"
         }
+        return "${moveToString(r[0])}  (nilai: ${fmt(r[1])})"
+    }
+
+    // Hanya langkahnya saja, contoh "e7e5". Kosong kalau tidak ada langkah.
+    fun bestMoveRaw(fen: String, depth: Int = 3): String {
+        val pos = parse(fen)
+        checkKings(pos)
+        val r = searchRoot(pos, depth) ?: return ""
+        return moveToString(r[0])
+    }
+
+    // Menjalankan langkah (contoh "g2g4") pada posisi FEN.
+    // Hasilnya FEN baru, atau null kalau langkahnya tidak sah.
+    fun applyMove(fen: String, moveText: String): String? {
+        val pos = try {
+            parse(fen)
+        } catch (e: Exception) {
+            return null
+        }
+        val txt = moveText.trim().lowercase()
+        val moves = legal(pos)
+        for (m in moves) {
+            if (moveToString(m) == txt) return toFen(apply(pos, m))
+        }
+        for (m in moves) {
+            if (moveToString(m) == txt + "q") return toFen(apply(pos, m))
+        }
+        return null
+    }
+
+    // Kosong kalau permainan masih jalan, selain itu keterangan hasilnya.
+    fun statusText(fen: String): String {
+        val pos = parse(fen)
+        if (legal(pos).isNotEmpty()) return ""
+        return if (inCheck(pos)) "Skakmat! Permainan selesai"
+        else "Remis (stalemate). Permainan selesai"
+    }
+
+    // ---------- Internal ----------
+
+    private fun checkKings(pos: Pos) {
+        if (kingSq(pos.b, 1) < 0 || kingSq(pos.b, -1) < 0) {
+            throw IllegalArgumentException("Raja tidak ada")
+        }
+    }
+
+    private fun searchRoot(pos: Pos, depth: Int): IntArray? {
+        val moves = legal(pos)
+        if (moves.isEmpty()) return null
         val sorted = moves.sortedByDescending { orderKey(pos, it) }
         var alpha = -MATE * 2
         var best = sorted[0]
@@ -107,7 +156,48 @@ object ChessEngine {
                 best = m
             }
         }
-        return "${moveToString(best)}  (nilai: ${fmt(alpha)})"
+        return intArrayOf(best, alpha)
+    }
+
+    private fun toFen(pos: Pos): String {
+        val sb = StringBuilder()
+        for (r in 7 downTo 0) {
+            var empty = 0
+            for (f in 0 until 8) {
+                val p = pos.b[r * 8 + f]
+                if (p == 0) {
+                    empty += 1
+                } else {
+                    if (empty > 0) {
+                        sb.append(empty)
+                        empty = 0
+                    }
+                    val ch = when (abs(p)) {
+                        1 -> 'p'
+                        2 -> 'n'
+                        3 -> 'b'
+                        4 -> 'r'
+                        5 -> 'q'
+                        else -> 'k'
+                    }
+                    sb.append(if (p > 0) ch.uppercaseChar() else ch)
+                }
+            }
+            if (empty > 0) sb.append(empty)
+            if (r > 0) sb.append('/')
+        }
+        sb.append(if (pos.side == 1) " w " else " b ")
+        var cs = ""
+        if ((pos.castle and 1) != 0) cs += "K"
+        if ((pos.castle and 2) != 0) cs += "Q"
+        if ((pos.castle and 4) != 0) cs += "k"
+        if ((pos.castle and 8) != 0) cs += "q"
+        if (cs.isEmpty()) cs = "-"
+        sb.append(cs)
+        sb.append(' ')
+        sb.append(if (pos.ep >= 0) sqName(pos.ep) else "-")
+        sb.append(" 0 1")
+        return sb.toString()
     }
 
     private fun fmt(s: Int): String {
