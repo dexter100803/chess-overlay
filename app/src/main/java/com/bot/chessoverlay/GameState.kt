@@ -8,4 +8,11 @@ object GameState {
     var myIsWhite: Boolean = false
     var flipped: Boolean = true
     val history = ArrayList<String>()
+
+    var statusMsg: String = ""
+    var capturing: Boolean = false
+    var boardVisible: Boolean = false
+
+    // Dipanggil di thread utama setiap kali ada perubahan.
+    var onChange: (() -> Unit)? = null
 }
